@@ -17,6 +17,7 @@ res4 = 60.52E2;
 res5 = .2E3
 str = "Hello world";
 str2 = "Hello # world"
+str7 = .
 
 if (m==n) {
     if (m >= n)
