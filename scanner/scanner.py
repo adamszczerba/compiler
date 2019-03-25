@@ -1,17 +1,17 @@
 import ply.lex as lex
 
 reserved = {
-    'if' : 'IF',
-    'else' : 'ELSE',
-    'for' : 'FOR',
-    'while' : 'WHILE',
-    'break' : 'BREAK',
-    'continue' : 'CONTINUE',
-    'return' : 'RETURN',
-    'eye' : 'EYE',
-    'zeros' : 'ZEROS',
-    'ones' : 'ONES',
-    'print' : 'PRINT'
+    'if': 'IF',
+    'else': 'ELSE',
+    'for': 'FOR',
+    'while': 'WHILE',
+    'break': 'BREAK',
+    'continue': 'CONTINUE',
+    'return': 'RETURN',
+    'eye': 'EYE',
+    'zeros': 'ZEROS',
+    'ones': 'ONES',
+    'print': 'PRINT'
 }
 
 tokens = ['DOT_PLUS',
@@ -38,7 +38,6 @@ tokens = ['DOT_PLUS',
           'STRING',
           'COMMENT'] + list(reserved.values())
 
-
 t_DOT_PLUS = r'\.\+'
 t_DOT_MINUS = r'\.\-'
 t_DOT_TIMES = r'\.\*'
@@ -57,7 +56,6 @@ t_GREATER_EQUAL = r'>='
 t_INEQUAL = r'!='
 t_EQUAL = r'=='
 
-
 literals = ['+', '-', '*', '/', '(', ')',
             '[', ']', '{', '}', ':', '\'', ',', ';']
 
@@ -68,40 +66,47 @@ def t_COMMENT(t):
     r'\#.*'
     pass
 
+
 def t_STRING(t):
     r'\"[^\"]*\"'
     return t
 
+
 def t_FLOATING_POINT_NUM(t):
-    r'( ([0-9]+\.[0-9]*[E][0-9]+) | (\.[0-9]*[E][0-9]+) | ([0-9]+\.[0-9]*) | (\.[0-9]+) )'
+    r'\-?(0|[1-9]\d*)(.\d+)?((e|E)(\-|\+)?\d+)'
     t.value = float(t.value)
     return t
+
 
 def t_INT_NUM(t):
     r'\d+'
     t.value = int(t.value)
     return t
 
+
 def t_ID(t):
     r'[a-zA-Z_]\w*'
     t.type = reserved.get(t.value, 'ID')
     return t
+
 
 # counting columns and lines
 def t_newline(t):
     r'\n+'
     t.lexer.lineno += len(t.value)
 
+
 # Compute column.
- #     input is the input text string
- #     token is a token instance
-def find_column(input, token):
-    line_start = input.rfind('\n', 0, token.lexpos) + 1
+#     input is the input text string
+#     token is a token instance
+def find_column(input_text, token):
+    line_start = input_text.rfind('\n', 0, token.lexpos) + 1
     return (token.lexpos - line_start) + 1
 
+
 def t_error(t):
-    print("line %d: illegal character '%s'" %(t.lineno, t.value[0]) )
+    print("line %d: illegal character '%s'" % (t.lineno, t.value[0]))
     t.lexer.skip(1)
 
-lexer = lex.lex()
 
+lexer = lex.lex()
