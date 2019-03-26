@@ -1,112 +1,152 @@
 import ply.lex as lex
 
-reserved = {
-    'if': 'IF',
-    'else': 'ELSE',
-    'for': 'FOR',
-    'while': 'WHILE',
-    'break': 'BREAK',
-    'continue': 'CONTINUE',
-    'return': 'RETURN',
-    'eye': 'EYE',
-    'zeros': 'ZEROS',
-    'ones': 'ONES',
-    'print': 'PRINT'
-}
 
-tokens = ['DOT_PLUS',
-          'DOT_MINUS',
-          'DOT_TIMES',
-          'DOT_DIVIDE',
+class Scanner:
+    reserved = {
+        'if': 'IF',
+        'else': 'ELSE',
+        'for': 'FOR',
+        'while': 'WHILE',
+        'break': 'BREAK',
+        'continue': 'CONTINUE',
+        'return': 'RETURN',
+        'eye': 'EYE',
+        'zeros': 'ZEROS',
+        'ones': 'ONES',
+        'print': 'PRINT'
+    }
 
-          'ASSIGN',
-          'ADD_ASSIGN',
-          'SUB_ASSIGN',
-          'MULTIPLIES_ASSIGN',
-          'DIVIDES_ASSIGN',
+    tokens = ['ASSIGN',
+              'ADD_ASSIGN',
+              'SUB_ASSIGN',
+              'MULTIPLIES_ASSIGN',
+              'DIVIDES_ASSIGN',
 
-          'LESS',
-          'GREATER',
-          'LESS_EQUAL',
-          'GREATER_EQUAL',
-          'INEQUAL',
-          'EQUAL',
+              'EQUAL',
+              'INEQUAL',
 
-          'ID',
-          'INT_NUM',
-          'FLOATING_POINT_NUM',
-          'STRING',
-          'COMMENT'] + list(reserved.values())
+              'LESS',
+              'GREATER',
+              'LESS_EQUAL',
+              'GREATER_EQUAL',
 
-t_DOT_PLUS = r'\.\+'
-t_DOT_MINUS = r'\.\-'
-t_DOT_TIMES = r'\.\*'
-t_DOT_DIVIDE = r'\./'
+              'PLUS',
+              'MINUS',
+              'DOT_PLUS',
+              'DOT_MINUS',
 
-t_ASSIGN = r'='
-t_ADD_ASSIGN = r'\+='
-t_SUB_ASSIGN = r'\-='
-t_MULTIPLIES_ASSIGN = r'\*='
-t_DIVIDES_ASSIGN = r'/='
+              'TIMES',
+              'DIVIDE',
+              'DOT_TIMES',
+              'DOT_DIVIDE',
 
-t_LESS = r'<'
-t_GREATER = r'>'
-t_LESS_EQUAL = r'<='
-t_GREATER_EQUAL = r'>='
-t_INEQUAL = r'!='
-t_EQUAL = r'=='
+              'APOSTROPHE',
 
-literals = ['+', '-', '*', '/', '(', ')',
-            '[', ']', '{', '}', ':', '\'', ',', ';']
+              'COLON',
 
-t_ignore = '  \t'
+              'LPAREN',
+              'RPAREN',
+              'LSQUARE_BRACKET',
+              'RSQUARE_BRACKET',
+              'LCURLY_BRACKET',
+              'RCURLY_BRACKET',
+              'COMA',
 
+              'SEMICOLON',
 
-def t_COMMENT(t):
-    r'\#.*'
-    pass
+              'ID',
+              'INT_NUM',
+              'FLOATING_POINT_NUM',
+              'STRING'] + list(reserved.values())
 
+    t_ASSIGN = r'='
+    t_ADD_ASSIGN = r'\+='
+    t_SUB_ASSIGN = r'\-='
+    t_MULTIPLIES_ASSIGN = r'\*='
+    t_DIVIDES_ASSIGN = r'\/='
 
-def t_STRING(t):
-    r'\"[^\"]*\"'
-    return t
+    t_PLUS = r'\+'
+    t_MINUS = r'\-'
+    t_DOT_PLUS = r'\.\+'
+    t_DOT_MINUS = r'\.\-'
 
+    t_TIMES = r'\*'
+    t_DIVIDE = r'\/'
+    t_DOT_TIMES = r'\.\*'
+    t_DOT_DIVIDE = r'\./'
 
-def t_FLOATING_POINT_NUM(t):
-    r'\-?(0|[1-9]\d*)(.\d+)?((e|E)(\-|\+)?\d+)'
-    t.value = float(t.value)
-    return t
+    t_LESS = r'<'
+    t_GREATER = r'>'
+    t_LESS_EQUAL = r'<='
+    t_GREATER_EQUAL = r'>='
+    t_INEQUAL = r'!='
+    t_EQUAL = r'=='
 
+    t_APOSTROPHE = '\''
 
-def t_INT_NUM(t):
-    r'\d+'
-    t.value = int(t.value)
-    return t
+    t_COLON = r'\:'
 
+    t_LPAREN = r'\('
+    t_RPAREN = r'\)'
+    t_LSQUARE_BRACKET = r'\['
+    t_RSQUARE_BRACKET = r'\]'
+    t_LCURLY_BRACKET = r'\{'
+    t_RCURLY_BRACKET = r'\}'
+    t_COMA = r','
 
-def t_ID(t):
-    r'[a-zA-Z_]\w*'
-    t.type = reserved.get(t.value, 'ID')
-    return t
+    t_SEMICOLON = r';'
 
+    # literals = ['+', '-', '*', '/', '(', ')',
+    #             '[', ']', '{', '}', ':', '\'', ',', ';']
 
-# counting columns and lines
-def t_newline(t):
-    r'\n+'
-    t.lexer.lineno += len(t.value)
+    t_ignore = '  \t'
 
+    t_ignore_COMMENT = r'\#.*'
 
-# Compute column.
-#     input is the input text string
-#     token is a token instance
-def find_column(input_text, token):
-    line_start = input_text.rfind('\n', 0, token.lexpos) + 1
-    return (token.lexpos - line_start) + 1
+    def t_STRING(self, t):
+        r'\"[^\"]*\"'
+        return t
 
+    def t_FLOATING_POINT_NUM(self, t):
+        r'[-+]?(?:\d*\.\d+|\d+\.\d*)(?:[eE][-+]?\d+)?'
+        t.value = float(t.value)
+        return t
 
-def t_error(t):
-    print("line %d: illegal character '%s'" % (t.lineno, t.value[0]))
-    t.lexer.skip(1)
+    def t_INT_NUM(self, t):
+        r'\d+'
+        t.value = int(t.value)
+        return t
 
+    def t_ID(self, t):
+        r'[a-zA-Z_]\w*'
+        t.type = self.reserved.get(t.value, 'ID')
+        return t
 
-lexer = lex.lex()
+    # counting columns and lines
+    def t_newline(self, t):
+        r'\n+'
+        t.lexer.lineno += len(t.value)
+
+    # Compute column.
+    #     input is the input text string
+    #     token is a token instance
+    def find_column(self, input_text, token):
+        line_start = input_text.rfind('\n', 0, token.lexpos) + 1
+        return (token.lexpos - line_start) + 1
+
+    def t_error(self, t):
+        print("%d: illegal character '%s'" % (t.lineno, t.value[0]))
+        t.lexer.skip(1)
+
+    # Build the lexer
+    def build(self, **kwargs):
+        self.lexer = lex.lex(module=self, **kwargs)
+
+    def input(self, input_text):
+        self.lexer.input(input_text)
+
+    def token(self):
+        return self.lexer.token()
+
+    def get_data(self):
+        return self.lexer.lexdata
