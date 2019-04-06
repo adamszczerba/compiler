@@ -1,7 +1,7 @@
 import sys
 from scanner import scanner
 from parser import Mparser
-import pprint
+from parser.ast.TreePrinter import TreePrinter
 
 if __name__ == '__main__':
 
@@ -19,9 +19,8 @@ if __name__ == '__main__':
 
     parser = Mparser.Parser(lexer)
 
-    pp = pprint.PrettyPrinter(indent=4)
-
     try:
-        pp.pprint(parser.parse(text, lexer=lexer))
+       ast = parser.parse(text, lexer=lexer)
+       ast.printTree()
     except SyntaxError as e:
         print(e)

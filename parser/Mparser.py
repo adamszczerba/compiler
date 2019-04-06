@@ -3,11 +3,15 @@
 # from scanner import scanner
 import ply.yacc as yacc
 
+from parser.ast.AST import CodeBlock, BinaryExpression, UnaryExpression, Matrix, IntegerNumber, FloatNumber, \
+    StringValue, ReturnStatement, BreakStatement, ContinueStatement, Variable, ElementAccessExpression, \
+    IfStatement, WhileStatement, RangeExpression, ForStatement, TransposeStatement, PrintStatement, EyeStatement, \
+    ZerosStatement, OnesStatement, ListOfIntegers
+
 
 class Parser:
     precedence = (
-        ('nonassoc', 'ASSIGN', 'ADD_ASSIGN', 'SUB_ASSIGN',
-         'MULTIPLIES_ASSIGN', 'DIVIDES_ASSIGN'),
+        ('nonassoc', 'ASSIGN', 'ADD_ASSIGN', 'SUB_ASSIGN', 'MULTIPLIES_ASSIGN', 'DIVIDES_ASSIGN'),
 
         ('nonassoc', 'EQUAL', 'INEQUAL'),
 
@@ -31,15 +35,17 @@ class Parser:
     def p_program(self, p):
         """program : multiline_statement"""
 
-        p[0] = ('program', p[1])
+        p[0] = p[1]
 
     def p_error(self, p):
         if p:
-            raise SyntaxError("Syntax error at line {0}, column {1}: LexToken({2}, '{3}')".format(p.lineno,
-                                                                                                  self.lexer.find_column(
-                                                                                                      self.lexer.get_data(),
-                                                                                                      p),
-                                                                                                  p.type, p.value))
+            raise SyntaxError(
+                "Syntax error at line {0}, column {1}: "
+                "LexToken({2}, '{3}')".format(p.lineno,
+                                              self.lexer.find_column(
+                                                  self.lexer.get_data(),
+                                                  p),
+                                              p.type, p.value))
             # self.parser.errok()
         else:
             print("Unexpected end of input")
@@ -65,7 +71,7 @@ class Parser:
     def p_statement_1(self, p):
         """statement : SEMICOLON"""
 
-        p[0] = []
+        p[0] = CodeBlock()
 
     def p_statement_2(self, p):
         """statement : statement SEMICOLON"""
@@ -75,7 +81,7 @@ class Parser:
     def p_statement_3(self, p):
         """statement : expression_statement SEMICOLON"""
 
-        p[0] = [p[1]]
+        p[0] = CodeBlock(p[1])
 
     def p_statement_4(self, p):
         """statement : if_statement
@@ -85,7 +91,7 @@ class Parser:
                      | return_statement
                      | break_statement
                      | continue_statement"""
-        p[0] = [p[1]]
+        p[0] = CodeBlock(p[1])
 
     def p_expression_statement(self, p):
         """expression_statement : expression
@@ -111,7 +117,7 @@ class Parser:
                   | variable_access_expression MULTIPLIES_ASSIGN expression
                   | variable_access_expression DIVIDES_ASSIGN expression"""
 
-        p[0] = ('assignment', p[2], p[1], p[3])
+        p[0] = BinaryExpression(p[2], p[1], p[3])
 
     def p_math_expression_1(self, p):
         """math_expression : math_expression PLUS math_expression
@@ -123,8 +129,7 @@ class Parser:
                            | math_expression DOT_TIMES math_expression
                            | math_expression DOT_DIVIDE math_expression
                            """
-
-        p[0] = ('math-expression', p[2], p[1], p[3])
+        p[0] = BinaryExpression(p[2], p[1], p[3])
 
     def p_math_expression_2(self, p):
         """math_expression : LPAREN math_expression RPAREN"""
@@ -143,17 +148,26 @@ class Parser:
     def p_math_expression_4(self, p):
         """math_expression : MINUS variable_access_expression"""
 
-        p[0] = ('uminus', p[2])
+        p[0] = UnaryExpression(p[1], p[2])
 
-    def p_matrix_1(self, p):
-        """matrix : LSQUARE_BRACKET RSQUARE_BRACKET"""
-
-        p[0] = []
-
-    def p_matrix_2(self, p):
+    def p_matrix(self, p):
         """matrix : LSQUARE_BRACKET matrix_content RSQUARE_BRACKET"""
 
-        p[0] = p[2]
+        p[0] = Matrix(p[2])
+
+
+    def p_matrix_content_1(self, p):
+        """matrix_content : matrix_row"""
+
+        p[0] = Matrix(p[1])
+
+    def p_matrix_content_2(self, p):
+        """matrix_content : matrix_content SEMICOLON matrix_row"""
+
+        if type(p[1]) == list:
+            p[0] = p[1] + [Matrix(p[3])]
+        else:
+            p[0] = [p[1], Matrix(p[3])]
 
     def p_matrix_row_1(self, p):
         """matrix_row : value"""
@@ -165,44 +179,25 @@ class Parser:
 
         p[0] = p[1] + [p[3]]
 
-    def p_matrix_content_1(self, p):
-        """matrix_content : matrix_row"""
-
-        p[0] = p[1]
-
-    def p_matrix_content_2(self, p):
-        """matrix_content : matrix_content SEMICOLON matrix_row"""
-
-        matrix_content = p[1]
-        matrix_row = p[3]
-
-        if type(matrix_content[0]) == list:
-            matrix_content += [matrix_row]
-
-        else:
-            matrix_content = [matrix_content, matrix_row]
-
-        p[0] = matrix_content
-
     def p_variable_access_expression_1(self, p):
         """variable_access_expression : ID"""
 
-        p[0] = ('id', p[1])
+        p[0] = Variable(p[1])
 
     def p_variable_access_expression_2(self, p):
         """variable_access_expression : ID LSQUARE_BRACKET list_of_integers RSQUARE_BRACKET"""
 
-        p[0] = ('index', ('id', p[1]), p[3])
+        p[0] = ElementAccessExpression(Variable(p[1]), p[3])
 
     def p_list_of_integers_1(self, p):
         """list_of_integers : INT_NUM"""
 
-        p[0] = [p[1]]
+        p[0] = ListOfIntegers(int(p[1]))
 
     def p_list_of_integers_2(self, p):
         """list_of_integers : list_of_integers COMA INT_NUM"""
 
-        p[0] = p[1] + [p[3]]
+        p[0] = p[1] + p[3]
 
     def p_contitional_expression(self, p):
         """conditional_expression : expression EQUAL expression
@@ -212,18 +207,18 @@ class Parser:
                                   | expression LESS_EQUAL expression
                                   | expression GREATER_EQUAL expression"""
 
-        p[0] = ('condition', p[2], p[1], p[3])
+        p[0] = BinaryExpression(p[2], p[1], p[3])
 
     def p_if_statement_2(self, p):
         """if_statement : IF expression code_block"""
 
-        p[0] = ('if', p[2], p[3], None)
+        p[0] = IfStatement(p[2], p[3])
 
     def p_if_statement_1(self, p):
         """if_statement : IF expression code_block ELSE code_block
                         | IF expression code_block ELSE if_statement"""
 
-        p[0] = ('if', p[2], p[3], ('else', p[5]))
+        p[0] = IfStatement(p[2], p[3], p[5])
 
     def p_coma_separated_expressions_1(self, p):
         """coma_separated_expressions : expression"""
@@ -236,63 +231,75 @@ class Parser:
     def p_print_statement(self, p):
         """print_statement : PRINT coma_separated_expressions"""
 
-        p[0] = ('print', p[2])
+        p[0] = PrintStatement(p[2])
 
     def p_while_statement(self, p):
         """while_statement : WHILE expression code_block"""
-        p[0] = ('while', p[2], p[3])
+
+        p[0] = WhileStatement(p[2], p[3])
 
     def p_range_statement(self, p):
         """range_statement : math_expression COLON math_expression"""
 
-        p[0] = ('range', p[1], p[3])
+        p[0] = RangeExpression(p[1], p[3])
 
     def p_for_statement(self, p):
         """for_statement : FOR ID ASSIGN range_statement code_block"""
 
-        p[0] = ('for', ('id-range', p[2], p[4]), p[5])
+        p[0] = ForStatement(
+            BinaryExpression(p[3], Variable(p[2]), p[4]),
+            p[5]
+        )
 
     def p_return_statement(self, p):
         """return_statement : RETURN expression"""
 
-        p[0] = ('return', p[2])
+        p[0] = ReturnStatement(p[2])
 
     def p_break_statement(self, p):
         """break_statement : BREAK"""
 
-        p[0] = ('break',)
+        p[0] = BreakStatement()
 
     def p_continue_statement(self, p):
         """continue_statement : CONTINUE"""
 
-        p[0] = ('continue',)
+        p[0] = ContinueStatement()
 
     def p_transpose_matrix(self, p):
         """transpose_matrix : variable_access_expression APOSTROPHE"""
 
-        p[0] = ('transpose', p[1])
+        p[0] = TransposeStatement(p[1])
 
-    def p_single_matrix_operation_function(self, p):
-        """single_matrix_operation_function : EYE LPAREN INT_NUM RPAREN
-                                            | ZEROS LPAREN INT_NUM RPAREN
-                                            | ONES LPAREN INT_NUM RPAREN"""
+    def p_single_matrix_operation_function_1(self, p):
+        """single_matrix_operation_function : EYE LPAREN INT_NUM RPAREN"""
 
-        p[0] = (p[1], int(p[3]))
+        p[0] = EyeStatement(int(p[3]))
+
+    def p_single_matrix_operation_function_2(self, p):
+        """single_matrix_operation_function : ZEROS LPAREN INT_NUM RPAREN"""
+
+        p[0] = ZerosStatement(int(p[3]))
+
+    def p_single_matrix_operation_function_3(self, p):
+        """single_matrix_operation_function : ONES LPAREN INT_NUM RPAREN"""
+
+        p[0] = OnesStatement(int(p[3]))
 
     def p_value_1(self, p):
         """value : INT_NUM"""
 
-        p[0] = ('integer', int(p[1]))
+        p[0] = IntegerNumber(int(p[1]))
 
     def p_value_2(self, p):
         """value : FLOATING_POINT_NUM"""
 
-        p[0] = ('float', float(p[1]))
+        p[0] = FloatNumber(float(p[1]))
 
     def p_value_3(self, p):
         """value : STRING"""
 
-        p[0] = ('string', p[1])
+        p[0] = StringValue(p[1])
 
     def parse(self, text, lexer, **kwargs):
         return self.parser.parse(text, lexer=lexer, **kwargs)
