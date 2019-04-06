@@ -61,10 +61,7 @@ class UnaryExpression(Node):
 
 class Matrix(Node):
     def __init__(self, value=None):
-        if value is None:
-            self.value = []
-
-        elif type(value) == Matrix:
+        if type(value) == Matrix:
             self.value = value.value
 
         elif type(value) == list:
@@ -73,7 +70,8 @@ class Matrix(Node):
             # Only if passed `rows` is row of matrices or values. Don't accept mixed.
             if nam_of_matrices_in_row == 0 or nam_of_matrices_in_row == len(value):
                 self.value = value
-                return
+            else:
+                raise ValueError("Passed value is not a row or list of rows.")
         else:
             raise ValueError("Passed value is not a row or list of rows.")
 
@@ -82,12 +80,6 @@ class Matrix(Node):
             return Matrix(self.value + other.value)
         else:
             return Matrix(self.value + [other])
-
-
-class CallExpression(Node):
-    def __init__(self, function_name, arguments):
-        self.function_name = function_name
-        self.arguments = arguments
 
 
 class ReturnStatement(Node):
@@ -176,6 +168,28 @@ class OnesStatement(Node):
 class EyeStatement(Node):
     def __init__(self, value):
         self.value = value
+
+
+class ListOfIntegers(Node):
+    def __init__(self, value):
+        if type(value) == list:
+            self.value = value
+        elif type(value) == int:
+            self.value = [value]
+        elif isinstance(value, ListOfIntegers):
+            self.value = value.value
+        else:
+            ValueError("Passed value is not valid.")
+
+    def __add__(self, other):
+        if type(other) == int:
+            return ListOfIntegers(self.value + [other])
+        elif type(other) == list:
+            return ListOfIntegers(self.value + other)
+        elif isinstance(other, ListOfIntegers):
+            return ListOfIntegers(self.value + other.value)
+        else:
+            ValueError("Passed value is not valid.")
 
 
 class Error(Node):

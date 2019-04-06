@@ -4,9 +4,9 @@
 import ply.yacc as yacc
 
 from parser.ast.AST import CodeBlock, BinaryExpression, UnaryExpression, Matrix, IntegerNumber, FloatNumber, \
-    StringValue, CallExpression, ReturnStatement, BreakStatement, ContinueStatement, Variable, ElementAccessExpression, \
+    StringValue, ReturnStatement, BreakStatement, ContinueStatement, Variable, ElementAccessExpression, \
     IfStatement, WhileStatement, RangeExpression, ForStatement, TransposeStatement, PrintStatement, EyeStatement, \
-    ZerosStatement, OnesStatement
+    ZerosStatement, OnesStatement, ListOfIntegers
 
 
 class Parser:
@@ -150,35 +150,34 @@ class Parser:
 
         p[0] = UnaryExpression(p[1], p[2])
 
-    def p_matrix_1(self, p):
-        """matrix : LSQUARE_BRACKET RSQUARE_BRACKET"""
-
-        p[0] = Matrix()
-
-    def p_matrix_2(self, p):
+    def p_matrix(self, p):
         """matrix : LSQUARE_BRACKET matrix_content RSQUARE_BRACKET"""
 
         p[0] = Matrix(p[2])
 
+
+    def p_matrix_content_1(self, p):
+        """matrix_content : matrix_row"""
+
+        p[0] = Matrix(p[1])
+
+    def p_matrix_content_2(self, p):
+        """matrix_content : matrix_content SEMICOLON matrix_row"""
+
+        if type(p[1]) == list:
+            p[0] = p[1] + [Matrix(p[3])]
+        else:
+            p[0] = [p[1], Matrix(p[3])]
+
     def p_matrix_row_1(self, p):
         """matrix_row : value"""
 
-        p[0] = Matrix() + p[1]
+        p[0] = [p[1]]
 
     def p_matrix_row_2(self, p):
         """matrix_row : matrix_row COMA value"""
 
         p[0] = p[1] + [p[3]]
-
-    def p_matrix_content_1(self, p):
-        """matrix_content : matrix_row"""
-
-        p[0] = p[1]
-
-    def p_matrix_content_2(self, p):
-        """matrix_content : matrix_content SEMICOLON matrix_row"""
-
-        return p[1] + p[3]
 
     def p_variable_access_expression_1(self, p):
         """variable_access_expression : ID"""
@@ -193,12 +192,12 @@ class Parser:
     def p_list_of_integers_1(self, p):
         """list_of_integers : INT_NUM"""
 
-        p[0] = [p[1]]
+        p[0] = ListOfIntegers(int(p[1]))
 
     def p_list_of_integers_2(self, p):
         """list_of_integers : list_of_integers COMA INT_NUM"""
 
-        p[0] = p[1] + [p[3]]
+        p[0] = p[1] + p[3]
 
     def p_contitional_expression(self, p):
         """conditional_expression : expression EQUAL expression
