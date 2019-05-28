@@ -21,7 +21,7 @@ class TreePrinter:
 
     @addToClass(AST.CodeBlock)
     def printTree(self, indent=0):
-        for statement in self.value:
+        for statement in self.children:
             statement.printTree(indent)
 
     @addToClass(AST.IntegerNumber)
@@ -55,20 +55,14 @@ class TreePrinter:
     def printTree(self, indent=0):
         print('|' * indent + "MATRIX")
 
-        for row in self.value:
-            row.printTree(indent + 1)
-
-    @addToClass(AST.Matrix)
-    def printTree(self, indent=0):
-        print('|' * indent + "MATRIX")
-
-        for row in self.value:
+        for row in self.children:
             row.printTree(indent + 1)
 
     @addToClass(AST.ReturnStatement)
     def printTree(self, indent=0):
         print('|' * indent + "RETURN")
-        self.value.printTree(indent + 1)
+        if self.value is not None:
+            self.value.printTree(indent + 1)
 
     @addToClass(AST.BreakStatement)
     def printTree(self, indent=0):
@@ -141,7 +135,7 @@ class TreePrinter:
 
     @addToClass(AST.ListOfIntegers)
     def printTree(self, indent=0):
-        for v in self.value:
+        for v in self.children:
             print('|' * indent + str(v))
 
     @addToClass(AST.Error)
