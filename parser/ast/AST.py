@@ -89,9 +89,9 @@ class Matrix(Node):
 
     def __add__(self, other):
         if type(other) == Matrix:
-            return Matrix(self.children + other.children)
+            return Matrix(self.children + other.children, line=self.line)
         else:
-            return Matrix(self.children + [other])
+            return Matrix(self.children + [other], line=self.line)
 
 
 class ReturnStatement(Node):
@@ -203,19 +203,19 @@ class ListOfIntegers(Node):
         elif isinstance(value, ListOfIntegers):
             self.children = value.children
         else:
-            ValueError("Passed value is not valid.")
+            raise ValueError("Passed value is not valid.")
 
         self.line = line
 
     def __add__(self, other):
         if type(other) == int:
-            return ListOfIntegers(self.children + [other])
+            return ListOfIntegers(self.children + [other], line=self.line)
         elif type(other) == list:
-            return ListOfIntegers(self.children + other)
+            return ListOfIntegers(self.children + other, line=self.line)
         elif isinstance(other, ListOfIntegers):
-            return ListOfIntegers(self.children + other.children)
+            return ListOfIntegers(self.children + other.children, line=self.line)
         else:
-            ValueError("Passed value is not valid.")
+            raise ValueError("Passed value is not valid.")
 
 
 class Error(Node):

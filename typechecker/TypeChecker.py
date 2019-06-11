@@ -30,7 +30,7 @@ class NodeVisitor:
 
 range_types = [IntegerType, FloatType]
 
-types = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: None)))
+types = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: type(None))))
 
 standard_ops = ['+', '-', '*', '/']
 matrix_ops = ['.+', '.-', '.*', './']
@@ -38,6 +38,11 @@ relation_ops = ['<', '>', '>=', '<=', '==', '!=']
 assign_ops = ['+=', '-=', '*=', '/=']
 
 for op in standard_ops + assign_ops:
+    # types[op] = {type(IntegerType): {type(FloatType): type(FloatType)}}
+    # types[op] = {type(FloatType): {type(FloatType): type(FloatType)}}
+    # types[op] = {type(FloatType): {type(IntegerType): type(FloatType)}}
+    # types[op] = {type(IntegerType): {type(IntegerType): type(IntegerType)}}
+    # types[op] = {type(MatrixType): {type(MatrixType): type(MatrixType)}}
     types[op][type(IntegerType)][type(FloatType)] = type(FloatType)
     types[op][type(FloatType)][type(IntegerType)] = type(FloatType)
     types[op][type(FloatType)][type(FloatType)] = type(FloatType)
@@ -46,8 +51,14 @@ for op in standard_ops + assign_ops:
 
 for op in matrix_ops:
     types[op][type(MatrixType)][type(MatrixType)] = type(MatrixType)
+    # types[op] = {type(MatrixType): {type(MatrixType): type(MatrixType)}}
 
 for op in relation_ops:
+    # types[op] = {type(IntegerType): {type(FloatType): type(FloatType)}}
+    # types[op] = {type(FloatType): {type(IntegerType): type(FloatType)}}
+    # types[op] = {type(FloatType): {type(FloatType): type(FloatType)}}
+    # types[op] = {type(IntegerType): {type(IntegerType): type(IntegerType)}}
+
     types[op][type(IntegerType)][type(FloatType)] = type(FloatType)
     types[op][type(FloatType)][type(IntegerType)] = type(FloatType)
     types[op][type(FloatType)][type(FloatType)] = type(FloatType)
@@ -55,10 +66,10 @@ for op in relation_ops:
 
 types['+'][type(StringType)][type(StringType)] = type(StringType)
 
-types['\''][type(MatrixType)][None] = type(MatrixType)
-types['-'][type(MatrixType)][None] = type(MatrixType)
-types['-'][type(IntegerType)][None] = type(IntegerType)
-types['-'][type(FloatType)][None] = type(FloatType)
+types['\''][type(MatrixType)][type(None)] = type(MatrixType)
+types['-'][type(MatrixType)][type(None)] = type(MatrixType)
+types['-'][type(IntegerType)][type(None)] = type(IntegerType)
+types['-'][type(FloatType)][type(None)] = type(FloatType)
 
 
 class TypeChecker(NodeVisitor):
@@ -89,23 +100,62 @@ class TypeChecker(NodeVisitor):
     def visit_Variable(self, node):
         variable_type = self.symbol_table.get(node.name)
         if variable_type is None:
-            print("{0}: Undefined variable".format(node.line), file=sys.stderr)
-            self.error_occurred = True
             return ErrorType()
+            # print("{0}: Undefined variable".format(node.line), file=sys.stderr)
+            # self.error_occurred = True
+            # return ErrorType()
 
         return variable_type.value_type
 
-    def visit_BinaryExpression(self, node):
-        left = self.visit(node.left)
-        right = self.visit(node.right)
+    def visit__assign_expression(self, node):
         op = node.op
+        right = self.visit(node.right)
+
+        if isinstance(right, (ErrorType, type(None))):
+            self.error_occurred = True
+            print("{0}: Error while assigning value to variable!".format(node.line))
+            return ErrorType()
 
         if op == '=':
-            pass
+            self.symbol_table.put(node.left.name, VariableSymbol(node.left.name, right))
+
+        if op in assign_ops:
+            left = node.left
+            result_type = types[op][type(left)][type(right)]
+            if result_type is not None:
+                if isinstance(result_type, MatrixType):
+                    if left.lengths != right.lengths or left.value_type != right.value_type:
+                        print("{0}: Different sizes of operand `{1}` parts!".format(node.line, op))
+                        self.error_occurred = True
+                        return ErrorType()
+                    else:
+                        return left
+                return result_type
+
+            print("{0}: Incorrect types of operand `{1}` values!".format(node.line, op))
+            self.error_occurred = True
+            return ErrorType()
+
+    def visit_BinaryExpression(self, node):
+        op = node.op
+
+        if op == '=' or op in assign_ops:
+            return self.visit__assign_expression(node)
 
         elif op in relation_ops:
-            pass
-        # else: rób to, co na dole
+            left = self.visit(node.left)
+            right = self.visit(node.right)
+            result_type = types[op][type(left)][type(right)]
+            if result_type is not None:
+                return result_type
+
+            print("{0}: Incorrect types of operand `{1}` values! Types({2}, {3}) result_type = ({4})"
+                  .format(node.line, op, str(type(left)), str(type(right)), str(type(result_type))))
+            self.error_occurred = True
+            return ErrorType()
+
+        left = self.visit(node.left)
+        right = self.visit(node.right)
 
         if isinstance(left, ErrorType) or isinstance(right, ErrorType):
             self.error_occurred = 1
@@ -113,7 +163,7 @@ class TypeChecker(NodeVisitor):
 
         result_type = types[op][type(left)][type(right)]
 
-        if result_type is not None:
+        if not isinstance(None, result_type):
             if isinstance(result_type, MatrixType):
                 if left.lengths != right.lengths or left.value_type != right.value_type:
                     print("{0}: Different sizes of operand `{1}` parts!".format(node.line, op))
@@ -128,12 +178,12 @@ class TypeChecker(NodeVisitor):
         return ErrorType()
 
     def visit_UnaryExpression(self, node):
-        var_type = self.visit(node.name)
+        var_type = self.visit(node.right)
         result_type = types['-'][type(var_type)][None]
         if result_type is not None:
             return result_type
         else:
-            print("{} Incorrect type for unary minus expression!".format(node.line))
+            print("{0} Incorrect type for unary minus expression!".format(node.line))
             self.error_occurred = True
             return ErrorType()
 
@@ -144,8 +194,9 @@ class TypeChecker(NodeVisitor):
                 submatrixes_types = [self.visit(c) for c in children]
                 first_type = type(submatrixes_types[0])
                 if all(isinstance(c, first_type) for c in submatrixes_types):
-                    return MatrixType(1 + children[0].dimensions, [len(children)] + children[0].lengths,
-                                      children[0].value_type)
+                    value_type = self.visit(children[0].children[0])
+                    return MatrixType(2, [len(children), len(children[0].children)],
+                                      value_type)
 
                 print("{0}: Invalid matrix. Matrix can contain only submatrixes or values.".format(node.line),
                       file=sys.stderr)
@@ -175,7 +226,7 @@ class TypeChecker(NodeVisitor):
 
     def visit_ReturnStatement(self, node):
         if node.value is not None:
-            return self.visit(node.content)
+            return self.visit(node.value)
 
     def visit_BreakStatement(self, node):
         if self.loop_level <= 0:
@@ -191,7 +242,7 @@ class TypeChecker(NodeVisitor):
         var_type = self.visit(node.variable)
 
         if isinstance(var_type, MatrixType):
-            index_len = len(node.index)
+            index_len = len(node.index.children)
             if index_len > var_type.dimensions:
                 print("{0}: Too many dimensions specified in index list.".format(node.line))
                 self.error_occurred = True
@@ -202,7 +253,7 @@ class TypeChecker(NodeVisitor):
                                   var_type.lengths[index_len:],
                                   var_type.value_type)
 
-            for (x, y) in zip(node.index, var_type.lengths):
+            for (x, y) in zip(node.index.children, var_type.lengths):
                 if x > y:
                     print("{0}: Specified index is greater than matrix dimension.".format(node.line))
                     self.error_occurred = True
@@ -237,13 +288,13 @@ class TypeChecker(NodeVisitor):
 
     def visit_RangeExpression(self, node):
         value_type = self.visit(node.left)
-        if isinstance(value_type, ErrorType) or value_type not in range_types:
+        if isinstance(value_type, ErrorType) or type(value_type) not in range_types:
             print("{0}: Incorrect range expression type!".format(node.line))
             self.error_occurred = True
             return ErrorType()
         value_type = self.visit(node.right)
-        if isinstance(value_type, ErrorType) or value_type not in range_types:
-            print("{0} Incorrect range expression type!".format(node.line))
+        if isinstance(value_type, ErrorType) or type(value_type) not in range_types:
+            print("{0}: Incorrect range expression type!".format(node.line))
             self.error_occurred = True
             return ErrorType()
 
@@ -263,11 +314,11 @@ class TypeChecker(NodeVisitor):
         var_type = self.visit(node.value)
 
         if isinstance(var_type, MatrixType):
-            print("{0} Transpose can be applied only to matrices!".format(node.line))
-            self.error_occurred = True
-            return ErrorType()
+            return MatrixType(var_type.dimensions, reversed(var_type.lengths), var_type.value_type)
 
-        return MatrixType(var_type.dimensions, reversed(var_type.lengths))
+        print("{0}: Transpose can be applied only to matrices! Trying to apply to: {1}".format(node.line, type(var_type)))
+        self.error_occurred = True
+        return ErrorType()
 
     def visit_PrintStatement(self, node):
         for value in node.values:
@@ -275,19 +326,19 @@ class TypeChecker(NodeVisitor):
 
     def visit_ZerosStatement(self, node):
         if isinstance(node.value, int):
-            return MatrixType(node.value, [node.value] * node.value)
+            return MatrixType(node.value, [node.value] * node.value, IntegerType())
 
         return ErrorType()
 
     def visit_OnesStatement(self, node):
         if isinstance(node.value, int):
-            return MatrixType(node.value, [node.value] * node.value)
+            return MatrixType(node.value, [node.value] * node.value, IntegerType())
 
         return ErrorType()
 
     def visit_EyeStatement(self, node):
         if isinstance(node.value, int):
-            return MatrixType(node.value, [node.value] * node.value)
+            return MatrixType(node.value, [node.value] * node.value, IntegerType())
 
         return ErrorType()
 
@@ -299,3 +350,4 @@ class TypeChecker(NodeVisitor):
 
     def visit_Error(self, node):
         return ErrorType()
+
